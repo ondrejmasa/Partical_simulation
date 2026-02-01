@@ -1,20 +1,30 @@
 #include "app.h"
 
+void App::InitSDL()
+{
+	SDL_Init(SDL_INIT_VIDEO);
+	SDL_CreateWindowAndRenderer("Particle simulation", gbl::WIDTH, gbl::HEIGHT, 0, &pWindow, &pRenderer);
+	SDL_SetRenderVSync(pRenderer, 1);
+	SDL_SetRenderDrawBlendMode(pRenderer, SDL_BLENDMODE_BLEND);
+}
+
 void App::InitBalls()
 {
-	mBalls.reserve(mNumBalls);
-	for (int i = 0; i < mNumBalls; ++i)
+	mBalls.reserve(mSettings.numBalls);
+	for (int i = 0; i < mSettings.numBalls; ++i)
 	{
-		Ball ball;
-		ball.radius = static_cast<float>(15 + rand() % 15);
-		ball.position = glm::vec2(
-			ball.radius + rand() % (gbl::WIDTH - static_cast<int>(2 * ball.radius)),
-			ball.radius + rand() % (gbl::HEIGHT - static_cast<int>(2 * ball.radius))
-		);
-		ball.velocity = glm::vec2(
-			(-500 + rand() % 1000) / 2000.f,
-			(-500 + rand() % 1000) / 2000.f
-		);
+		float radius = static_cast<float>(mSettings.ballMinRadius + rand() % (mSettings.ballMaxRadius - mSettings.ballMinRadius + 1));
+		glm::vec2 position = {
+			radius + rand() % (gbl::WIDTH - static_cast<int>(2 * radius)),
+			radius + rand() % (gbl::HEIGHT - static_cast<int>(2 * radius))
+		};
+		glm::vec2 velocity{
+			mSettings.ballMinVelocity + rand() % (mSettings.ballMaxVelocity - mSettings.ballMinVelocity + 1),
+			mSettings.ballMinVelocity + rand() % (mSettings.ballMaxVelocity - mSettings.ballMinVelocity + 1)
+		};
+		if (rand() % 2 == 0) velocity.x = -velocity.x;
+		if (rand() % 2 == 0) velocity.y = -velocity.y;
+		Ball ball(radius, mSettings.BallsCol, position, velocity);
 		mBalls.push_back(ball);
 	}
 }
@@ -39,9 +49,8 @@ void App::HandleCollisions(const float dt)
 				float n1v = glm::dot(mBalls[i].velocity, norm);
 				float n2v = glm::dot(mBalls[j].velocity, norm);
 
-				constexpr float momentumKeep = 0.95f;
-				mBalls[i].velocity = momentumKeep * (t1v * t + n2v * norm);
-				mBalls[j].velocity = momentumKeep * (t2v * t + n1v * norm);
+				mBalls[i].velocity = mSettings.collisionDamping * (t1v * t + n2v * norm);
+				mBalls[j].velocity = mSettings.collisionDamping * (t2v * t + n1v * norm);
 			}
 		}
 
@@ -49,7 +58,7 @@ void App::HandleCollisions(const float dt)
 			if (mBalls[i].collidesWith(mMouseBall))
 			{
 				glm::vec2 dir = glm::normalize(mBalls[i].position - mMouseBall.position);
-				mBalls[i].velocity += dir * 0.1f * dt;
+				mBalls[i].velocity += dir * mSettings.mouseBallForce * dt;
 			}
 		}
 	}
@@ -65,32 +74,63 @@ void App::UpdateMouseBall()
 }
 
 App::App()
+	: mMouseBall(mSettings.mouseBallRadius, mSettings.MouseBallCol, glm::vec2(0.f), glm::vec2(0.f))
 {
+	InitSDL();
 	InitBalls();
-	mMouseBall.radius = 30.f;
-	mMouseBall.color[0] = 255;
-	mMouseBall.color[1] = 0;
-	mMouseBall.color[2] = 0;
 }
 
-void App::Update(const float dt)
+App::~App()
 {
+	SDL_DestroyRenderer(pRenderer);
+	SDL_DestroyWindow(pWindow);
+	SDL_Quit();
+}
+
+void App::Run()
+{
+	SDL_Event event;
+	bool quit = false;
+	while (!quit) {
+		while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_EVENT_QUIT) {
+				quit = true;
+			}
+		}
+		SDL_Color& col = mSettings.BackgroundCol;
+		SDL_SetRenderDrawColor(pRenderer, col.r, col.g, col.b, col.a);
+		SDL_RenderClear(pRenderer);
+		Update();
+		Render();
+		SDL_RenderPresent(pRenderer);
+	}
+}
+
+void App::Update()
+{
+	bool isFpsUpdate = mFpsCounter.Update();
+	float deltaTime = mFpsCounter.GetDeltaTime();
+	if (isFpsUpdate)
+	{
+		float fps = mFpsCounter.GetFps();
+		SDL_SetWindowTitle(pWindow, ("FPS: " + std::to_string(fps)).c_str());
+	}
 	UpdateMouseBall();
 	for (Ball& ball : mBalls)
 	{
-		ball.Update(dt);
+		ball.Update(deltaTime);
 	}
-	HandleCollisions(dt);
+	HandleCollisions(deltaTime);
 }
 
-void App::Render(SDL_Renderer* aRenderer) const
+void App::Render() const
 {
 	for (const Ball& ball : mBalls)
 	{
-		ball.Render(aRenderer);
+		ball.Render(pRenderer);
 	}
 	if (mIsMouseBallActive)
 	{
-		mMouseBall.Render(aRenderer);
+		mMouseBall.Render(pRenderer);
 	}
 }

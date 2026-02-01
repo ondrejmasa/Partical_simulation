@@ -1,5 +1,13 @@
 #include "ball.h"
 
+Ball::Ball(float aRadius, SDL_Color color, glm::vec2 aPosition, glm::vec2 aVelocity)
+    : radius{ aRadius }
+    , color{ color }
+    , position{ aPosition }
+	, velocity{ aVelocity }
+{
+}
+
 void Ball::Update(const float dt)
 {
 	position += velocity * dt;
@@ -27,7 +35,7 @@ void Ball::Update(const float dt)
 
 void Ball::Render(SDL_Renderer* aRenderer) const
 {
-    SDL_SetRenderDrawColor(aRenderer, color[0], color[1], color[2], color[3]);
+    SDL_SetRenderDrawColor(aRenderer, color.r, color.g, color.b, color.a);
     int r = (int)radius;
     int x = 0;
     int y = r;

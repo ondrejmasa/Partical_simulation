@@ -28,12 +28,40 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+# Add ImGui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        master
+)
+FetchContent_MakeAvailable(imgui)
+
+# create ImGui static library
+add_library(imgui_lib STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp "include/global.h")
+
+# set include directories for ImGui
+target_include_directories(imgui_lib PUBLIC 
+    ${imgui_SOURCE_DIR} 
+    ${imgui_SOURCE_DIR}/backends
+)
+# link SDL3 to ImGui library
+target_link_libraries(imgui_lib PRIVATE SDL3-shared)
+
+
 # Add source to this project's executable.
-add_executable (Partical_simulation "src/main.cpp" "include/app.h" "src/app.cpp" "src/ball.cpp" "include/ball.h" "include/global.h")
+add_executable (Partical_simulation "src/main.cpp" "include/app.h" "src/app.cpp" "src/ball.cpp" "include/ball.h"  "src/fpsCounter.cpp" "include/fpsCounter.h" "include/global.h")
 
 target_link_libraries(Partical_simulation PRIVATE 
     SDL3-shared 
-    glm::glm 
+    glm::glm
+    imgui_lib
 )
 
 target_include_directories(Partical_simulation PUBLIC include)
