@@ -13,7 +13,8 @@ bool FpsCounter::Update()
 	mLastTime = currentTime;
 	mElapsedTime += mDeltaTime;
 	mFrameCount++;
-	if (mElapsedTime >= 1.f) {
+	if (mElapsedTime >= 1.f)
+	{
 		mFps = mFrameCount / mElapsedTime;
 		mElapsedTime = 0.f;
 		mFrameCount = 0;
